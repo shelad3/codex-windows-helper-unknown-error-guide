@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An evidence-based guide to troubleshooting Codex Desktop's Windows helper_unknown_error setup refresh failure.">
+  <title>Codex Windows Runner Troubleshooting</title>
+  <style>
+    :root { --ink:#172033; --muted:#63708a; --line:#dbe3ef; --blue:#265dce; --soft:#f4f7fb; --warn:#fff7e6; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#fbfcfe; font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .hero { background:linear-gradient(135deg,#102a56,#265dce); color:#fff; padding:76px 24px 70px; }
+    .wrap { max-width:1050px; margin:auto; }
+    .eyebrow { text-transform:uppercase; letter-spacing:.12em; font-size:12px; font-weight:700; opacity:.8; }
+    h1 { max-width:820px; margin:14px 0 18px; font-size:clamp(34px,6vw,62px); line-height:1.05; letter-spacing:-.04em; }
+    .lead { max-width:760px; margin:0; font-size:20px; color:#dce9ff; }
+    main { padding:52px 24px 80px; }
+    h2 { margin:48px 0 14px; font-size:30px; letter-spacing:-.02em; }
+    h3 { margin:26px 0 8px; font-size:20px; }
+    p { max-width:850px; }
+    code, pre { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    pre { overflow:auto; padding:18px 20px; border:1px solid var(--line); border-radius:12px; background:#101827; color:#edf4ff; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin:24px 0; }
+    .card { border:1px solid var(--line); border-radius:16px; padding:20px; background:#fff; box-shadow:0 8px 24px rgba(30,55,95,.05); }
+    .card strong { display:block; margin-bottom:6px; color:var(--blue); }
+    .notice { border-left:4px solid #e0a11a; background:var(--warn); padding:16px 18px; border-radius:8px; max-width:850px; }
+    table { width:100%; border-collapse:collapse; margin:20px 0; background:#fff; font-size:15px; }
+    th,td { text-align:left; vertical-align:top; padding:13px 14px; border-bottom:1px solid var(--line); }
+    th { background:var(--soft); font-size:13px; text-transform:uppercase; letter-spacing:.06em; }
+    a { color:var(--blue); }
+    footer { border-top:1px solid var(--line); padding:26px 24px 40px; color:var(--muted); font-size:14px; }
+  </style>
+</head>
+<body>
+  <header class="hero"><div class="wrap">
+    <div class="eyebrow">Windows troubleshooting guide</div>
+    <h1>Fixing “setup refresh had errors” in Codex Desktop</h1>
+    <p class="lead">A concise, evidence-based guide to separating command-runner failures from problems in PowerShell, Git, or your project.</p>
+  </div></header>
+  <main><div class="wrap">
+    <div class="notice"><strong>Key idea:</strong> the message is generic. It usually means Codex failed while preparing its Windows sandbox or bundled runtime before your command could run.</div>
+    <h2>What the investigation showed</h2>
+    <div class="grid">
+      <div class="card"><strong>Before execution</strong>The failure can occur before PowerShell, CMD, Git, or the repository is reached.</div>
+      <div class="card"><strong>Not always global</strong>A fresh workspace or alternate path may work while one existing path fails.</div>
+      <div class="card"><strong>Multiple causes</strong>Ownership, ACLs, file locks, stale path state, and sandbox mode can produce the same top-level message.</div>
+    </div>
+    <h2>Recommended recovery order</h2>
+    <h3>1. Close elevated tools</h3>
+    <p>Close Codex and editors launched as Administrator. End leftover <code>ChatGPT.exe</code> processes in Task Manager, reopen Codex normally, and retry.</p>
+    <h3>2. Inspect the exact failing path</h3>
+    <p>Look for the nested sandbox error. If it identifies <code>.git</code> or <code>.codex</code>, check ownership before changing permissions:</p>
+    <pre><code>(Get-Acl ".").Owner
+(Get-Acl ".git").Owner
+(Get-Acl ".codex").Owner</code></pre>
+    <h3>3. Try the temporary sandbox workaround</h3>
+    <p>Back up <code>%USERPROFILE%\.codex\config.toml</code>, then test:</p>
+    <pre><code>[windows]
+sandbox = "unelevated"</code></pre>
+    <p>This changes the isolation model, so treat it as a workaround and restore the previous setting if it does not help.</p>
+    <h3>4. Test a new path</h3>
+    <p>If only one workspace fails, test an empty workspace or a reversible Windows junction alias. Keep the real repository, history, and branch unchanged.</p>
+    <h2>What not to do first</h2>
+    <div class="grid">
+      <div class="card">Do not delete the global Codex cache blindly.</div>
+      <div class="card">Do not reset every repository ACL.</div>
+      <div class="card">Do not disable Windows security tools.</div>
+      <div class="card">Do not assume Git or PowerShell is broken.</div>
+    </div>
+    <h2>Likely causes</h2>
+    <table><thead><tr><th>Possible cause</th><th>Useful clue</th></tr></thead><tbody>
+      <tr><td>Sandbox ACL failure</td><td><code>SetNamedSecurityInfoW failed: 5</code> or access denied.</td></tr>
+      <tr><td>Locked runtime file</td><td>OS error indicating a file is being used by another process.</td></tr>
+      <tr><td>Stale path-specific state</td><td>The same physical files work through a new path.</td></tr>
+      <tr><td>Elevated/unelevated mismatch</td><td>Elevated execution works while the normal runner fails.</td></tr>
+    </tbody></table>
+    <p>Read the full rationale and tested sequence in <a href="README.md">the repository guide</a>.</p>
+  </div></main>
+  <footer><div class="wrap">Community troubleshooting summary · <a href="https://community.openai.com/t/codex-desktop-command-runner-completely-broken-helper-unknown-error-setup-refresh-had-errors/1391898">OpenAI Developer Community discussion</a></div></footer>
+</body>
+</html>
